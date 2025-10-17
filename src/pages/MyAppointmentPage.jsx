@@ -10,7 +10,6 @@ const API_BASE = "http://localhost:3000/api";
 
 /* ------------------- labels & edit routes ------------------- */
 const SERVICE_LABEL = { vet: "Veterinary Care", grooming: "Grooming", daycare: "Daycare" };
-
 const EDIT_PATH = { vet: "/vet-edit", grooming: "/grooming-edit", daycare: "/daycare-edit" };
 
 /** Broadcast so other pages/widgets can refresh after payment/CRUD */
@@ -45,23 +44,31 @@ function getTitle(a) {
   const cands = [a?.title, a?.packageName, a?.selectedService, a?.packageId, a?.planName, a?.serviceTitle].filter(Boolean);
   return cands[0] || "—";
 }
-function getDateYMD(a) { return a?.dateISO || a?.date || null; }
+function getDateYMD(a) {
+  return a?.dateISO || a?.date || null;
+}
 function getTimeRange(a) {
+  // explicit start/end strings
   if (a?.start || a?.end) {
     const s = a?.start ?? "";
     const e = a?.end ?? "";
     const sep = s && e ? "–" : "";
     return `${s}${sep}${e}` || "—";
   }
+  // integer minutes since midnight + optional duration
   if (Number.isFinite(a?.timeSlotMinutes)) {
     const startMin = a.timeSlotMinutes;
-    const dur = Number.isFinite(a?.durationMinutes) ? a.durationMinutes : DURATION_DEFAULT[(a?.service || "").toLowerCase()] ?? 30;
+    const dur = Number.isFinite(a?.durationMinutes)
+      ? a.durationMinutes
+      : DURATION_DEFAULT[(a?.service || "").toLowerCase()] ?? 30;
     return `${minutesToHHMM(startMin)}–${minutesToHHMM(startMin + dur)}`;
   }
+  // daycare drop-off/pick-up window (minutes)
   if (Number.isFinite(a?.dropOffMinutes)) {
     const s = minutesToHHMM(a.dropOffMinutes);
     return Number.isFinite(a?.pickUpMinutes) ? `${s}–${minutesToHHMM(a.pickUpMinutes)}` : s || "—";
   }
+  // generic startMinutes/endMinutes
   if (Number.isFinite(a?.startMinutes) || Number.isFinite(a?.endMinutes)) {
     const s = Number.isFinite(a?.startMinutes) ? minutesToHHMM(a.startMinutes) : "";
     const e = Number.isFinite(a?.endMinutes) ? minutesToHHMM(a.endMinutes) : "";
@@ -71,26 +78,62 @@ function getTimeRange(a) {
   return "—";
 }
 
+/* ------------------- paid-status helpers ------------------- */
+/**
+ * Robust paid detector:
+ * - Supports various shapes (paymentStatus strings, nested payment.status, boolean isPaid)
+ * - Treats "paid", "completed", "success", "successful", "yes" (case-insensitive) as paid
+ */
+function isPaid(appt) {
+  const val =
+    appt?.paymentStatus ??
+    appt?.payment?.status ??
+    (appt?.isPaid ? "paid" : "");
+
+  const s = String(val).toLowerCase().trim();
+  return s === "paid" ||
+         s === "complete" ||
+         s === "completed" ||
+         s === "success" ||
+         s === "successful" ||
+         s === "yes" ||
+         appt?.isPaid === true;
+}
+
 /* ------------------- misc helpers ------------------- */
-function keyify(s) { return String(s || "").toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, ""); }
+function keyify(s) {
+  return String(s || "").toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, "");
+}
 function getPrice(a) {
   const service = String(a?.service || "").toLowerCase();
-  const pkgKey = keyify(a?.packageId) || keyify(a?.packageName) || keyify(a?.selectedService) || keyify(a?.title);
+  const pkgKey =
+    keyify(a?.packageId) ||
+    keyify(a?.packageName) ||
+    keyify(a?.selectedService) ||
+    keyify(a?.title);
   const table = PRICE_TABLE[service] || {};
   const fromTable = table[pkgKey];
   return Number.isFinite(Number(fromTable)) ? Number(fromTable) : 0;
 }
-function calcExtrasTotal(extras = []) { return extras.reduce((sum, e) => sum + Number(e?.price || 0), 0); }
-function calcLineTotal(a) { return getPrice(a) + calcExtrasTotal(a?.extras); }
+function calcExtrasTotal(extras = []) {
+  return extras.reduce((sum, e) => sum + Number(e?.price || 0), 0);
+}
+function calcLineTotal(a) {
+  return getPrice(a) + calcExtrasTotal(a?.extras);
+}
 function fmtDate(ymd) {
   if (!ymd) return "—";
   try {
     const [Y, M, D] = String(ymd).split("-").map((n) => parseInt(n || "0", 10));
     const d = new Date(Y, (M || 1) - 1, D || 1);
     return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" });
-  } catch { return ymd; }
+  } catch {
+    return ymd;
+  }
 }
-function isActionLocked(a, loading) { return a?.status === "rejected" || a?.status === "cancelled" || loading; }
+function isActionLocked(a, loading) {
+  return a?.status === "rejected" || a?.status === "cancelled" || loading;
+}
 
 /* ============================================================= */
 export default function MyAppointmentPage() {
@@ -99,7 +142,8 @@ export default function MyAppointmentPage() {
   const { enqueueSnackbar } = useSnackbar();
   const { token } = useAppContext();
 
-  const { addItem, addMany } = useCart(); // optional; kept if you use a Cart elsewhere
+  // optional; kept if you use a Cart elsewhere
+  const { addItem, addMany } = useCart?.() || { addItem: null, addMany: null };
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -110,14 +154,16 @@ export default function MyAppointmentPage() {
   const [deletingId, setDeletingId] = useState(null);
 
   // payment flow state
-  const [selected, setSelected] = useState(null);
-  const [showAddMore, setShowAddMore] = useState(false);
+  const [selected, setSelected] = useState(null);   // the first chosen appt to pay
+  const [showAddMore, setShowAddMore] = useState(false); // step to add more unpaid appts
 
   // avoid double-processing same success payload
   const processedSuccessRef = useRef(false);
 
   /* ------------------- load/merge all appointments ------------------- */
-  useEffect(() => { loadAllAppointments(); }, []);
+  useEffect(() => {
+    loadAllAppointments();
+  }, []);
   useEffect(() => {
     const handler = () => loadAllAppointments();
     window.addEventListener("appointments:changed", handler);
@@ -139,9 +185,15 @@ export default function MyAppointmentPage() {
       const daycare = await daycareRes.json();
       const vet = await vetRes.json();
 
-      const groomed = (Array.isArray(grooming) ? grooming : []).map((a) => ({ ...a, service: "grooming" }));
-      const daycared = (Array.isArray(daycare) ? daycare : []).map((a) => ({ ...a, service: "daycare" }));
-      const vetened  = (Array.isArray(vet) ? vet : []).map((a) => ({ ...a, service: "vet" }));
+      // Canonicalize: attach service + normalize paymentStatus to "paid"/"unpaid"
+      const canonicalize = (a, service) => {
+        const paid = isPaid(a);
+        return { ...a, service, paymentStatus: paid ? "paid" : "unpaid" };
+      };
+
+      const groomed = (Array.isArray(grooming) ? grooming : []).map((a) => canonicalize(a, "grooming"));
+      const daycared = (Array.isArray(daycare) ? daycare : []).map((a) => canonicalize(a, "daycare"));
+      const vetened  = (Array.isArray(vet) ? vet : []).map((a) => canonicalize(a, "vet"));
 
       const merged = [...groomed, ...daycared, ...vetened].sort((a, b) => {
         const dA = new Date(a.dateISO || a.date);
@@ -169,28 +221,49 @@ export default function MyAppointmentPage() {
   const getApptId = (a) => a?._id || a?.id;
 
   /* ------------------- delete flow ------------------- */
-  function openConfirm(appt) { setPendingAppt(appt); setConfirmOpen(true); }
-  function closeConfirm() { setConfirmOpen(false); setPendingAppt(null); setDeletingId(null); }
+  function openConfirm(appt) {
+    setPendingAppt(appt);
+    setConfirmOpen(true);
+  }
+  function closeConfirm() {
+    setConfirmOpen(false);
+    setPendingAppt(null);
+    setDeletingId(null);
+  }
   async function confirmDelete() {
     if (!pendingAppt) return;
     const id = getApptId(pendingAppt);
-    if (!id) { enqueueSnackbar("Missing appointment id.", { variant: "warning" }); closeConfirm(); return; }
+    if (!id) {
+      enqueueSnackbar("Missing appointment id.", { variant: "warning" });
+      closeConfirm();
+      return;
+    }
     setDeletingId(id);
 
+    // optimistic removal
     const prevItems = items;
     setItems((cur) => cur.filter((x) => getApptId(x) !== id));
 
     try {
-      const res = await fetch(`${API_BASE}/${pendingAppt.service}/${id}`, { method: "DELETE", headers: { token } });
+      const res = await fetch(`${API_BASE}/${pendingAppt.service}/${id}`, {
+        method: "DELETE",
+        headers: { token },
+      });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) { setItems(prevItems); enqueueSnackbar(data?.message || "Delete failed", { variant: "error" }); return; }
+      if (!res.ok) {
+        setItems(prevItems);
+        enqueueSnackbar(data?.message || "Delete failed", { variant: "error" });
+        return;
+      }
 
       enqueueSnackbar("Appointment deleted.", { variant: "success" });
       broadcastAppointmentsChanged({ action: "deleted", service: pendingAppt.service, id });
     } catch {
       setItems(prevItems);
       enqueueSnackbar("Network error while deleting.", { variant: "error" });
-    } finally { closeConfirm(); }
+    } finally {
+      closeConfirm();
+    }
   }
 
   /* ------------------- edit & pay ------------------- */
@@ -203,7 +276,7 @@ export default function MyAppointmentPage() {
   }
 
   function pay(appt) {
-    if (appt.paymentStatus === "paid") return;
+    if (isPaid(appt)) return;        // guard
     if (isActionLocked(appt, false)) return;
     setSelected(appt);
   }
@@ -211,8 +284,14 @@ export default function MyAppointmentPage() {
   function proceedToCheckoutFromSummary() {
     if (!selected) return;
     // optional: keep cart in sync for other screens
-    addItem?.({ id: selected._id || selected.id, service: selected.service, title: getTitle(selected), price: getPrice(selected), extras: selected.extras || [] });
-    setShowAddMore(true);
+    addItem?.({
+      id: selected._id || selected.id,
+      service: selected.service,
+      title: getTitle(selected),
+      price: getPrice(selected),
+      extras: selected.extras || [],
+    });
+    setShowAddMore(true); // open "add more unpaid" step
   }
 
   function buildOrderPayload(orderItems) {
@@ -227,12 +306,25 @@ export default function MyAppointmentPage() {
       lineTotal: calcLineTotal(a),
     }));
     const subtotal = itemsPayload.reduce((s, it) => s + Number(it.lineTotal || 0), 0);
-    return { currency: "LKR", subtotal, items: itemsPayload, note: "Please upload a clear image/PDF of your bank transfer slip." };
+    return {
+      currency: "LKR",
+      subtotal,
+      items: itemsPayload,
+      note: "Please upload a clear image/PDF of your bank transfer slip.",
+    };
   }
 
   function addMoreAndGo(extraIds) {
+    // Only add selected extra appointments (by id), which are already filtered to unpaid
     const extra = items.filter((a) => extraIds.includes(a.id || a._id));
-    addMany?.(extra.map((a) => ({ id: a._id || a.id, title: getTitle(a), price: getPrice(a), extras: a.extras || [] })));
+    addMany?.(
+      extra.map((a) => ({
+        id: a._id || a.id,
+        title: getTitle(a),
+        price: getPrice(a),
+        extras: a.extras || [],
+      }))
+    );
     const order = buildOrderPayload([selected, ...extra]);
     setShowAddMore(false);
     setSelected(null);
@@ -283,7 +375,7 @@ export default function MyAppointmentPage() {
     } catch {
       // bad JSON; ignore
     }
-  // also re-check whenever the location changes (if you navigate from /payment-success to here)
+    // also re-check whenever the location changes (if you navigate from /payment-success to here)
   }, [location?.pathname]);
 
   // Core: call backend to mark paid, then update local state + broadcast.
@@ -308,7 +400,6 @@ export default function MyAppointmentPage() {
       enqueueSnackbar("Payment recorded. Appointments marked as paid.", { variant: "success" });
 
       // ---- Notify other dashboards to refresh ----
-      // We broadcast once per service for readability (dashboards can filter on detail.service if needed)
       const touchedServices = Array.from(new Set(itemsToMark.map((x) => x.service)));
       touchedServices.forEach((svc) =>
         broadcastAppointmentsChanged({ action: "payment-updated", service: svc })
@@ -352,8 +443,8 @@ export default function MyAppointmentPage() {
                 <div className="mt-1 flex flex-wrap gap-2 text-xs">
                   <Badge label={`Status: ${a.status || "pending"}`} tone={statusTone(a.status)} />
                   <Badge
-                    label={`Payment: ${a.paymentStatus || "unpaid"}`}
-                    tone={a.paymentStatus === "paid" ? "green" : "slate"}
+                    label={`Payment: ${isPaid(a) ? "paid" : "unpaid"}`}
+                    tone={isPaid(a) ? "green" : "slate"}
                   />
                 </div>
               </div>
@@ -377,10 +468,10 @@ export default function MyAppointmentPage() {
 
                 <button
                   onClick={() => pay(a)}
-                  disabled={a.paymentStatus === "paid" || isActionLocked(a, loading)}
+                  disabled={isPaid(a) || isActionLocked(a, loading)}
                   className="rounded-lg bg-emerald-600 text-white px-3 py-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-emerald-700"
                 >
-                  {a.paymentStatus === "paid" ? "Paid" : "Pay Online"}
+                  {isPaid(a) ? "Paid" : "Pay Online"}
                 </button>
               </div>
             </li>
@@ -397,7 +488,7 @@ export default function MyAppointmentPage() {
         />
       )}
 
-      {/* 2) "Add more?" before we jump to Upload Slip */}
+      {/* 2) "Add more?" — show only UNPAID, non-cancelled/non-rejected, excluding the first-picked */}
       {showAddMore && (
         <AddMoreModal
           appts={items.filter(
@@ -405,7 +496,7 @@ export default function MyAppointmentPage() {
               (a.id || a._id) !== (selected?._id || selected?.id) &&
               a.status !== "cancelled" &&
               a.status !== "rejected" &&
-              a.paymentStatus !== "paid"
+              !isPaid(a) // ← the key change: only show UNPAID
           )}
           onSkip={skipAddMore}
           onConfirm={addMoreAndGo}
@@ -446,10 +537,14 @@ function Badge({ label, tone = "slate" }) {
 
 function statusTone(s) {
   switch ((s || "pending").toLowerCase()) {
-    case "accepted": return "green";
-    case "rejected": return "red";
-    case "cancelled": return "amber";
-    default: return "blue";
+    case "accepted":
+      return "green";
+    case "rejected":
+      return "red";
+    case "cancelled":
+      return "amber";
+    default:
+      return "blue";
   }
 }
 
@@ -464,10 +559,15 @@ function MiniOrderSummaryModal({ selected, onCancel, onConfirm }) {
         <h2 className="text-lg font-semibold">Order Summary</h2>
 
         <p className="mt-1 text-gray-700">{getTitle(selected)}</p>
-        <p className="text-gray-600 text-sm">{fmtDate(getDateYMD(selected))} • {getTimeRange(selected)}</p>
+        <p className="text-gray-600 text-sm">
+          {fmtDate(getDateYMD(selected))} • {getTimeRange(selected)}
+        </p>
 
         <ul className="mt-3 text-sm text-gray-700 space-y-1">
-          <li className="flex justify-between"><span>Base</span><span>Rs. {base.toFixed(2)}</span></li>
+          <li className="flex justify-between">
+            <span>Base</span>
+            <span>Rs. {base.toFixed(2)}</span>
+          </li>
           {(selected.extras || []).map((e, i) => (
             <li key={i} className="flex justify-between">
               <span>Extra · {e.name}</span>
@@ -475,13 +575,18 @@ function MiniOrderSummaryModal({ selected, onCancel, onConfirm }) {
             </li>
           ))}
           <li className="flex justify-between font-semibold pt-2 border-t">
-            <span>Total</span><span>Rs. {(total).toFixed(2)}</span>
+            <span>Total</span>
+            <span>Rs. {total.toFixed(2)}</span>
           </li>
         </ul>
 
         <div className="mt-4 flex gap-2">
-          <button onClick={onCancel} className="px-3 py-2 rounded-lg border">Cancel</button>
-          <button onClick={onConfirm} className="px-3 py-2 rounded-lg bg-emerald-600 text-white">Proceed to checkout</button>
+          <button onClick={onCancel} className="px-3 py-2 rounded-lg border">
+            Cancel
+          </button>
+          <button onClick={onConfirm} className="px-3 py-2 rounded-lg bg-emerald-600 text-white">
+            Proceed to checkout
+          </button>
         </div>
       </div>
     </div>
@@ -501,15 +606,19 @@ function AddMoreModal({ appts, onSkip, onConfirm, onClose }) {
         </div>
 
         <div className="mt-3 max-h-64 overflow-auto divide-y">
-          {appts.length === 0 && <div className="text-gray-500 py-4">No other pending appointments.</div>}
+          {appts.length === 0 && <div className="text-gray-500 py-4">No other pending unpaid appointments.</div>}
           {appts.map((a) => {
             const id = a.id || a._id;
             return (
               <label key={id} className="flex items-center gap-3 py-2">
                 <input type="checkbox" checked={picked.includes(id)} onChange={() => toggle(id)} />
                 <div>
-                  <div className="font-medium">{SERVICE_LABEL[a.service] || a.service} — {getTitle(a)}</div>
-                  <div className="text-sm text-slate-600">{fmtDate(getDateYMD(a))} • {getTimeRange(a)}</div>
+                  <div className="font-medium">
+                    {SERVICE_LABEL[a.service] || a.service} — {getTitle(a)}
+                  </div>
+                  <div className="text-sm text-slate-600">
+                    {fmtDate(getDateYMD(a))} • {getTimeRange(a)}
+                  </div>
                   <div className="text-sm text-slate-700">Rs. {getPrice(a).toFixed(2)}</div>
                 </div>
               </label>
@@ -518,8 +627,14 @@ function AddMoreModal({ appts, onSkip, onConfirm, onClose }) {
         </div>
 
         <div className="mt-4 flex gap-2 justify-between">
-          <button onClick={onSkip} className="px-3 py-2 rounded-lg border">Skip</button>
-          <button onClick={() => onConfirm(picked)} className="px-3 py-2 rounded-lg bg-emerald-600 text-white disabled:opacity-50" disabled={appts.length === 0}>
+          <button onClick={onSkip} className="px-3 py-2 rounded-lg border">
+            Skip
+          </button>
+          <button
+            onClick={() => onConfirm(picked)}
+            className="px-3 py-2 rounded-lg bg-emerald-600 text-white disabled:opacity-50"
+            disabled={appts.length === 0}
+          >
             Continue to Upload Slip
           </button>
         </div>

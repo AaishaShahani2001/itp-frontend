@@ -48,14 +48,12 @@ function getDateYMD(a) {
   return a?.dateISO || a?.date || null;
 }
 function getTimeRange(a) {
-  // explicit start/end strings
   if (a?.start || a?.end) {
     const s = a?.start ?? "";
     const e = a?.end ?? "";
     const sep = s && e ? "–" : "";
     return `${s}${sep}${e}` || "—";
   }
-  // integer minutes since midnight + optional duration
   if (Number.isFinite(a?.timeSlotMinutes)) {
     const startMin = a.timeSlotMinutes;
     const dur = Number.isFinite(a?.durationMinutes)
@@ -63,12 +61,10 @@ function getTimeRange(a) {
       : DURATION_DEFAULT[(a?.service || "").toLowerCase()] ?? 30;
     return `${minutesToHHMM(startMin)}–${minutesToHHMM(startMin + dur)}`;
   }
-  // daycare drop-off/pick-up window (minutes)
   if (Number.isFinite(a?.dropOffMinutes)) {
     const s = minutesToHHMM(a.dropOffMinutes);
     return Number.isFinite(a?.pickUpMinutes) ? `${s}–${minutesToHHMM(a.pickUpMinutes)}` : s || "—";
   }
-  // generic startMinutes/endMinutes
   if (Number.isFinite(a?.startMinutes) || Number.isFinite(a?.endMinutes)) {
     const s = Number.isFinite(a?.startMinutes) ? minutesToHHMM(a.startMinutes) : "";
     const e = Number.isFinite(a?.endMinutes) ? minutesToHHMM(a.endMinutes) : "";
@@ -79,28 +75,21 @@ function getTimeRange(a) {
 }
 
 /* ------------------- paid-status helpers ------------------- */
-/**
- * Robust paid detector:
- * - Supports various shapes (paymentStatus strings, nested payment.status, boolean isPaid)
- * - Treats "paid", "completed", "success", "successful", "yes" (case-insensitive) as paid
- */
 function isPaid(appt) {
-  const val =
-    appt?.paymentStatus ??
-    appt?.payment?.status ??
-    (appt?.isPaid ? "paid" : "");
-
+  const val = appt?.paymentStatus ?? appt?.payment?.status ?? (appt?.isPaid ? "paid" : "");
   const s = String(val).toLowerCase().trim();
-  return s === "paid" ||
-         s === "complete" ||
-         s === "completed" ||
-         s === "success" ||
-         s === "successful" ||
-         s === "yes" ||
-         appt?.isPaid === true;
+  return (
+    s === "paid" ||
+    s === "complete" ||
+    s === "completed" ||
+    s === "success" ||
+    s === "successful" ||
+    s === "yes" ||
+    appt?.isPaid === true
+  );
 }
 
-/* ------------------- misc helpers ------------------- */
+/* -------------------  helpers ------------------- */
 function keyify(s) {
   return String(s || "").toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, "");
 }
@@ -135,6 +124,20 @@ function isActionLocked(a, loading) {
   return a?.status === "rejected" || a?.status === "cancelled" || loading;
 }
 
+/* >>> service chip color helper <<< */
+function serviceChipClasses(service) {
+  switch ((service || "").toLowerCase()) {
+    case "vet":       // Veterinary Care → blue
+      return "bg-blue-50 text-blue-700 ring-blue-200";
+    case "grooming":  // Grooming → fuchsia
+      return "bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-200";
+    case "daycare":   // Daycare → emerald
+      return "bg-emerald-50 text-emerald-700 ring-emerald-200";
+    default:
+      return "bg-slate-100 text-slate-700 ring-slate-200";
+  }
+}
+
 /* ============================================================= */
 export default function MyAppointmentPage() {
   const navigate = useNavigate();
@@ -154,13 +157,11 @@ export default function MyAppointmentPage() {
   const [deletingId, setDeletingId] = useState(null);
 
   // payment flow state
-  const [selected, setSelected] = useState(null);   // the first chosen appt to pay
-  const [showAddMore, setShowAddMore] = useState(false); // step to add more unpaid appts
+  const [selected, setSelected] = useState(null);
+  const [showAddMore, setShowAddMore] = useState(false);
 
-  // avoid double-processing same success payload
   const processedSuccessRef = useRef(false);
 
-  /* ------------------- load/merge all appointments ------------------- */
   useEffect(() => {
     loadAllAppointments();
   }, []);
@@ -185,7 +186,6 @@ export default function MyAppointmentPage() {
       const daycare = await daycareRes.json();
       const vet = await vetRes.json();
 
-      // Canonicalize: attach service + normalize paymentStatus to "paid"/"unpaid"
       const canonicalize = (a, service) => {
         const paid = isPaid(a);
         return { ...a, service, paymentStatus: paid ? "paid" : "unpaid" };
@@ -240,7 +240,6 @@ export default function MyAppointmentPage() {
     }
     setDeletingId(id);
 
-    // optimistic removal
     const prevItems = items;
     setItems((cur) => cur.filter((x) => getApptId(x) !== id));
 
@@ -276,14 +275,13 @@ export default function MyAppointmentPage() {
   }
 
   function pay(appt) {
-    if (isPaid(appt)) return;        // guard
+    if (isPaid(appt)) return;
     if (isActionLocked(appt, false)) return;
     setSelected(appt);
   }
 
   function proceedToCheckoutFromSummary() {
     if (!selected) return;
-    // optional: keep cart in sync for other screens
     addItem?.({
       id: selected._id || selected.id,
       service: selected.service,
@@ -291,7 +289,7 @@ export default function MyAppointmentPage() {
       price: getPrice(selected),
       extras: selected.extras || [],
     });
-    setShowAddMore(true); // open "add more unpaid" step
+    setShowAddMore(true);
   }
 
   function buildOrderPayload(orderItems) {
@@ -315,7 +313,6 @@ export default function MyAppointmentPage() {
   }
 
   function addMoreAndGo(extraIds) {
-    // Only add selected extra appointments (by id), which are already filtered to unpaid
     const extra = items.filter((a) => extraIds.includes(a.id || a._id));
     addMany?.(
       extra.map((a) => ({
@@ -339,13 +336,7 @@ export default function MyAppointmentPage() {
     navigate("/payments/upload-slip", { state: { order } });
   }
 
-  /* ------------------- PAYMENT SUCCESS INTEGRATION -------------------
-     When /payment-success fires an event or writes sessionStorage,
-     we mark those appointments as PAID on the server and locally,
-     then broadcast so Caretaker/Doctor dashboards refresh.
-  -------------------------------------------------------------------*/
-
-  // 1) handle runtime event from success page
+  /* ------------------- payment success listeners ------------------- */
   useEffect(() => {
     function onSuccess(evt) {
       const detail = evt?.detail;
@@ -357,7 +348,6 @@ export default function MyAppointmentPage() {
     return () => window.removeEventListener("payment:success", onSuccess);
   }, []);
 
-  // 2) handle sessionStorage fallback (e.g., user navigated back later)
   useEffect(() => {
     if (processedSuccessRef.current) return;
     const raw = sessionStorage.getItem("payment:lastSuccess");
@@ -367,28 +357,21 @@ export default function MyAppointmentPage() {
       const parsed = JSON.parse(raw);
       const itemsToMark = Array.isArray(parsed?.items) ? parsed.items : [];
       if (itemsToMark.length) {
-        processedSuccessRef.current = true; // avoid duplicating
-        // Clear immediately to prevent repeats on refresh
+        processedSuccessRef.current = true;
         sessionStorage.removeItem("payment:lastSuccess");
         markPaidAndSync(itemsToMark);
       }
-    } catch {
-      // bad JSON; ignore
-    }
-    // also re-check whenever the location changes (if you navigate from /payment-success to here)
+    } catch {}
   }, [location?.pathname]);
 
-  // Core: call backend to mark paid, then update local state + broadcast.
-  async function markPaidAndSync(itemsToMark /* [{id, service}] */) {
+  async function markPaidAndSync(itemsToMark) {
     try {
-      // ---- Server update (implement this endpoint in your API) ----
       await fetch(`${API_BASE}/payments/mark-paid`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", token },
         body: JSON.stringify({ items: itemsToMark }),
-      }).catch(() => ({})); // fail-soft; we'll still optimistically update
+      }).catch(() => ({}));
 
-      // ---- Optimistic local update ----
       const idSet = new Set(itemsToMark.map((x) => String(x.id)));
       setItems((cur) =>
         cur.map((a) => {
@@ -399,7 +382,6 @@ export default function MyAppointmentPage() {
 
       enqueueSnackbar("Payment recorded. Appointments marked as paid.", { variant: "success" });
 
-      // ---- Notify other dashboards to refresh ----
       const touchedServices = Array.from(new Set(itemsToMark.map((x) => x.service)));
       touchedServices.forEach((svc) =>
         broadcastAppointmentsChanged({ action: "payment-updated", service: svc })
@@ -410,69 +392,95 @@ export default function MyAppointmentPage() {
     }
   }
 
-  /* ------------------- render ------------------- */
+  /* ------------------- VIEW  ------------------- */
   return (
-    <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-4">My Appointments</h1>
+    <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900">My Appointments</h1>
+        <p className="text-slate-600 mt-1 text-sm">
+          View, edit, cancel, and pay for your upcoming bookings.
+        </p>
+      </div>
 
+      {/* Loading / Empty */}
       {loading ? (
-        <p>Loading appointments...</p>
+        <div className="space-y-3">
+          <SkeletonLine />
+          <SkeletonLine />
+          <SkeletonLine />
+        </div>
       ) : items.length === 0 ? (
-        <p className="text-slate-600">No appointments found.</p>
+        <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center">
+          <div className="mx-auto mb-2 h-12 w-12 rounded-full bg-emerald-50 grid place-items-center">
+            <span className="text-2xl">📅</span>
+          </div>
+          <h3 className="font-semibold text-slate-900">No appointments yet</h3>
+          <p className="text-slate-600 text-sm">When you book, they’ll appear here.</p>
+        </div>
       ) : (
         <ul className="space-y-4">
           {items.map((a) => (
             <li
               key={`${a.service}-${a._id || a.id}`}
-              className="bg-white rounded-xl p-4 ring-1 ring-black/5 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+              className="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow p-5"
             >
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-slate-500">Service</span>
-                  <span className="text-sm font-semibold">{SERVICE_LABEL[a.service] || a.service}</span>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                {/* Left block */}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-xs">
+                    {/* >>> colored service chip here <<< */}
+                    <span
+                      className={
+                        "inline-flex items-center rounded-full ring-1 px-2 py-0.5 " +
+                        serviceChipClasses(a.service)
+                      }
+                    >
+                      {SERVICE_LABEL[a.service] || a.service}
+                    </span>
+                    <Dot />
+                    <span className="text-slate-500">{fmtDate(getDateYMD(a))}</span>
+                    <Dot />
+                    <span className="text-slate-500">{getTimeRange(a)}</span>
+                  </div>
+
+                  <h3 className="mt-1 text-base md:text-lg font-semibold text-slate-900 truncate">
+                    {getTitle(a)}
+                  </h3>
+
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Badge label={`Status: ${a.status || "pending"}`} tone={statusTone(a.status)} />
+                    <Badge
+                      label={`Payment: ${isPaid(a) ? "paid" : "unpaid"}`}
+                      tone={isPaid(a) ? "green" : "slate"}
+                    />
+                    <span className="inline-flex items-center rounded-md bg-slate-50 ring-1 ring-slate-200 text-slate-700 text-[12px] px-2.5 py-1">
+                      Rs. {getPrice(a).toFixed(2)}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="text-slate-900 font-semibold">{getTitle(a)}</div>
-
-                <div className="text-sm text-slate-600">
-                  {fmtDate(getDateYMD(a))} • {getTimeRange(a)}
-                </div>
-
-                <div className="mt-1 font-semibold">Price: Rs. {getPrice(a).toFixed(2)}</div>
-
-                <div className="mt-1 flex flex-wrap gap-2 text-xs">
-                  <Badge label={`Status: ${a.status || "pending"}`} tone={statusTone(a.status)} />
-                  <Badge
-                    label={`Payment: ${isPaid(a) ? "paid" : "unpaid"}`}
-                    tone={isPaid(a) ? "green" : "slate"}
+                {/* Actions */}
+                <div className="flex gap-2 md:justify-end">
+                  <Button
+                    variant="ghost"
+                    onClick={() => edit(a)}
+                    disabled={isActionLocked(a, loading)}
+                    label="Edit"
+                  />
+                  <Button
+                    variant="danger"
+                    onClick={() => openConfirm(a)}
+                    disabled={isActionLocked(a, loading)}
+                    label="Cancel"
+                  />
+                  <Button
+                    variant={isPaid(a) ? "done" : "primary"}
+                    onClick={() => pay(a)}
+                    disabled={isPaid(a) || isActionLocked(a, loading)}
+                    label={isPaid(a) ? "Paid" : "Pay Online"}
                   />
                 </div>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => edit(a)}
-                  disabled={isActionLocked(a, loading)}
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Edit
-                </button>
-
-                <button
-                  onClick={() => openConfirm(a)}
-                  disabled={isActionLocked(a, loading)}
-                  className="rounded-lg bg-red-600 text-white px-3 py-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  onClick={() => pay(a)}
-                  disabled={isPaid(a) || isActionLocked(a, loading)}
-                  className="rounded-lg bg-emerald-600 text-white px-3 py-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-emerald-700"
-                >
-                  {isPaid(a) ? "Paid" : "Pay Online"}
-                </button>
               </div>
             </li>
           ))}
@@ -488,7 +496,7 @@ export default function MyAppointmentPage() {
         />
       )}
 
-      {/* 2) "Add more?" — show only UNPAID, non-cancelled/non-rejected, excluding the first-picked */}
+      {/* 2) Add more unpaid */}
       {showAddMore && (
         <AddMoreModal
           appts={items.filter(
@@ -496,7 +504,7 @@ export default function MyAppointmentPage() {
               (a.id || a._id) !== (selected?._id || selected?.id) &&
               a.status !== "cancelled" &&
               a.status !== "rejected" &&
-              !isPaid(a) // ← the key change: only show UNPAID
+              !isPaid(a)
           )}
           onSkip={skipAddMore}
           onConfirm={addMoreAndGo}
@@ -519,7 +527,35 @@ export default function MyAppointmentPage() {
   );
 }
 
-/* ------------------- little UI bits ------------------- */
+/* ------------------- UI bits (polished) ------------------- */
+function Dot() {
+  return <span className="mx-1 h-1 w-1 rounded-full bg-slate-300 inline-block align-middle" />;
+}
+
+function SkeletonLine() {
+  return <div className="h-16 rounded-xl bg-slate-100 animate-pulse" />;
+}
+
+function Button({ variant = "primary", label, ...props }) {
+  const styles = {
+    primary:
+      "bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-emerald-600",
+    danger:
+      "bg-red-600 text-white hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-red-600",
+    ghost:
+      "border border-slate-300 bg-white hover:bg-slate-50 text-slate-800",
+    done:
+      "bg-slate-200 text-slate-700 cursor-default",
+  };
+  const base =
+    "inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+  return (
+    <button className={`${base} ${styles[variant]}`} {...props}>
+      {label}
+    </button>
+  );
+}
+
 function Badge({ label, tone = "slate" }) {
   const tones = {
     green: "text-emerald-700 bg-emerald-50 ring-emerald-200",
@@ -554,16 +590,19 @@ function MiniOrderSummaryModal({ selected, onCancel, onConfirm }) {
   const total = base + extras;
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-end sm:items-center justify-center z-50">
-      <div className="bg-white w-full sm:w-[480px] rounded-t-2xl sm:rounded-2xl p-5">
-        <h2 className="text-lg font-semibold">Order Summary</h2>
+    <div className="fixed inset-0 z-50 grid place-items-center">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+      <div className="relative bg-white w-[94%] sm:w-[480px] rounded-2xl shadow-xl p-6">
+        <h2 className="text-lg font-semibold text-slate-900">Order Summary</h2>
 
-        <p className="mt-1 text-gray-700">{getTitle(selected)}</p>
-        <p className="text-gray-600 text-sm">
-          {fmtDate(getDateYMD(selected))} • {getTimeRange(selected)}
-        </p>
+        <div className="mt-1">
+          <p className="text-slate-800 font-medium">{getTitle(selected)}</p>
+          <p className="text-slate-600 text-sm">
+            {fmtDate(getDateYMD(selected))} • {getTimeRange(selected)}
+          </p>
+        </div>
 
-        <ul className="mt-3 text-sm text-gray-700 space-y-1">
+        <ul className="mt-4 text-sm text-slate-700 space-y-1">
           <li className="flex justify-between">
             <span>Base</span>
             <span>Rs. {base.toFixed(2)}</span>
@@ -580,13 +619,9 @@ function MiniOrderSummaryModal({ selected, onCancel, onConfirm }) {
           </li>
         </ul>
 
-        <div className="mt-4 flex gap-2">
-          <button onClick={onCancel} className="px-3 py-2 rounded-lg border">
-            Cancel
-          </button>
-          <button onClick={onConfirm} className="px-3 py-2 rounded-lg bg-emerald-600 text-white">
-            Proceed to checkout
-          </button>
+        <div className="mt-5 flex items-center justify-end gap-2">
+          <Button variant="ghost" onClick={onCancel} label="Cancel" />
+          <Button variant="primary" onClick={onConfirm} label="Proceed to checkout" />
         </div>
       </div>
     </div>
@@ -598,45 +633,56 @@ function AddMoreModal({ appts, onSkip, onConfirm, onClose }) {
   const toggle = (id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-      <div className="bg-white w-full max-w-[560px] rounded-2xl p-5">
+    <div className="fixed inset-0 z-50 grid place-items-center">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+      <div className="relative bg-white w-[94%] max-w-[600px] rounded-2xl shadow-xl p-6">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Add anything else?</h3>
-          <button onClick={onClose} className="text-slate-500">✕</button>
+          <h3 className="text-lg font-semibold text-slate-900">Add anything else?</h3>
+          <button
+            onClick={onClose}
+            className="h-9 w-9 rounded-full grid place-items-center text-slate-500 hover:bg-slate-100"
+            aria-label="Close"
+          >
+            ✕
+          </button>
         </div>
 
-        <div className="mt-3 max-h-64 overflow-auto divide-y">
-          {appts.length === 0 && <div className="text-gray-500 py-4">No other pending unpaid appointments.</div>}
+        <div className="mt-4 max-h-72 overflow-auto divide-y rounded-xl border border-slate-200">
+          {appts.length === 0 && (
+            <div className="text-slate-500 py-6 text-center">No other pending unpaid appointments.</div>
+          )}
           {appts.map((a) => {
             const id = a.id || a._id;
             return (
-              <label key={id} className="flex items-center gap-3 py-2">
-                <input type="checkbox" checked={picked.includes(id)} onChange={() => toggle(id)} />
-                <div>
-                  <div className="font-medium">
+              <label key={id} className="flex items-start gap-3 p-3 hover:bg-slate-50">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  checked={picked.includes(id)}
+                  onChange={() => toggle(id)}
+                />
+                <div className="min-w-0">
+                  <div className="font-medium text-slate-900 truncate">
                     {SERVICE_LABEL[a.service] || a.service} — {getTitle(a)}
                   </div>
                   <div className="text-sm text-slate-600">
                     {fmtDate(getDateYMD(a))} • {getTimeRange(a)}
                   </div>
-                  <div className="text-sm text-slate-700">Rs. {getPrice(a).toFixed(2)}</div>
+                  <div className="text-sm text-slate-800 mt-1">Rs. {getPrice(a).toFixed(2)}</div>
                 </div>
               </label>
             );
           })}
         </div>
 
-        <div className="mt-4 flex gap-2 justify-between">
-          <button onClick={onSkip} className="px-3 py-2 rounded-lg border">
-            Skip
-          </button>
-          <button
+        <div className="mt-5 flex items-center justify-between">
+          <Button variant="ghost" onClick={onSkip} label="Skip" />
+          <Button
+            variant="primary"
             onClick={() => onConfirm(picked)}
-            className="px-3 py-2 rounded-lg bg-emerald-600 text-white disabled:opacity-50"
             disabled={appts.length === 0}
-          >
-            Continue to Upload Slip
-          </button>
+            label="Continue to Upload Slip"
+          />
         </div>
 
         <p className="text-[12px] text-slate-500 mt-3">

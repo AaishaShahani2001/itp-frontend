@@ -18,7 +18,7 @@ createRoot(document.getElementById('root')).render(
           <NotificationProvider>
             <SnackbarProvider
               maxSnack={4}
-              autoHideDuration={5000}
+              autoHideDuration={3000}
               anchorOrigin={{ vertical: "top", horizontal: "right" }}
               preventDuplicate>
               <App />

@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useSnackbar } from "notistack";
 import { useAppContext } from "../context/AppContext";
 
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = "https://itp-backend-waw1.onrender.com";
 
 // Allowed slip file types & size (match the text on the UI)
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "application/pdf"];
@@ -74,7 +74,7 @@ export default function UploadSlipPage() {
       form.append("order", JSON.stringify(order));
 
       // Example endpoint. Adjust to your backend.
-      const res = await fetch(`${API_BASE}/payments/upload-slip`, {
+      const res = await fetch(`${API_BASE}/api/payments/upload-slip`, {
         method: "POST",
         headers: { token }, // auth
         body: form,

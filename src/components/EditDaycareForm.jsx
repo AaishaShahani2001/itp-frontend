@@ -188,7 +188,7 @@ export default function EditDaycareForm() {
 
     (async () => {
       try {
-        const r = await fetch(`http://localhost:3000/api/daycare/${editId}`);
+        const r = await fetch(`https://itp-backend-waw1.onrender.com/api/daycare/${editId}`);
         const ct = r.headers.get("content-type") || "";
         const data = ct.includes("application/json") ? await r.json() : await r.text();
 
@@ -248,7 +248,7 @@ export default function EditDaycareForm() {
         notes: values.notes?.trim() || "",
       };
 
-      const r = await fetch(`http://localhost:3000/api/daycare/${editId}`, {
+      const r = await fetch(`https://itp-backend-waw1.onrender.com/api/daycare/${editId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -278,7 +278,7 @@ export default function EditDaycareForm() {
       navigate(`/myCareappointments?email=${encodeURIComponent(values.ownerEmail)}`);
     } catch (err) {
       console.error(err);
-      enqueueSnackbar("❌ Network error. Is the API running on http://localhost:3000 ?", {
+      enqueueSnackbar("❌ Network error. Please check your connection.", {
         variant: "error",
       });
     }

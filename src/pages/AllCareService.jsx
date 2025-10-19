@@ -3,7 +3,7 @@ import CareBanner from "../components/CareBanner.jsx";
 import CareArea from "./CareArea.jsx";
 import ScheduleCalendar from "../components/ScheduleCalendar.jsx";
 
-const API_BASE = "http://localhost:3000";
+const API_BASE = "https://itp-backend-waw1.onrender.com";
 
 export default function AllCareService() {
   const [date, setDate] = useState(() => new Date());

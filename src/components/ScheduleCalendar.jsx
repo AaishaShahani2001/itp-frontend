@@ -14,7 +14,7 @@ import {
 import enUS from "date-fns/locale/en-US";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = "https://itp-backend-waw1.onrender.com/api";
 
 /* ---------- date-fns localizer ---------- */
 const locales = { "en-US": enUS };

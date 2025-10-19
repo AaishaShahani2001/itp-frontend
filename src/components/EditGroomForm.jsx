@@ -7,6 +7,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
+import { useAppContext } from "../context/AppContext";
 
 /* ---------------- time helpers: local date (no UTC shift) ---------------- */
 function toLocalYMD(d) {
@@ -113,6 +114,7 @@ export default function EditGroomForm() {
   const { id: idFromParams } = useParams();
   const [params] = useSearchParams();
   const location = useLocation();
+  const { backendUrl } = useAppContext();
 
   // Accept id from /grooming-edit/:id OR ?editId= OR location.state.appointment
   const editId =
@@ -148,7 +150,7 @@ export default function EditGroomForm() {
 
     (async () => {
       try {
-        const r = await fetch(`http://localhost:3000/api/grooming/${editId}`);
+        const r = await fetch(`${backendUrl}/api/grooming/${editId}`);
         const ct = r.headers.get("content-type") || "";
         const data = ct.includes("application/json") ? await r.json() : await r.text();
 
@@ -198,7 +200,7 @@ export default function EditGroomForm() {
         notes: vals.notes?.trim() || "",
       };
 
-      const r = await fetch(`http://localhost:3000/api/grooming/${editId}`, {
+      const r = await fetch(`${backendUrl}/api/grooming/${editId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

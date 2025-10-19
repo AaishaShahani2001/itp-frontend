@@ -6,7 +6,7 @@ import { useSnackbar } from "notistack";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useAppContext } from "../context/AppContext";
 
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = "https://itp-backend-waw1.onrender.com";
 
 /* ------------------- labels & edit routes ------------------- */
 const SERVICE_LABEL = { vet: "Veterinary Care", grooming: "Grooming", daycare: "Daycare" };
@@ -174,9 +174,9 @@ export default function MyAppointmentPage() {
   async function fetchAllAppointments() {
     try {
       const [groomingRes, daycareRes, vetRes] = await Promise.all([
-        fetch(`${API_BASE}/grooming`, { headers: { token } }),
-        fetch(`${API_BASE}/daycare`, { headers: { token } }),
-        fetch(`${API_BASE}/vet`, { headers: { token } }),
+        fetch(`${API_BASE}/api/grooming`, { headers: { token } }),
+        fetch(`${API_BASE}/api/daycare`, { headers: { token } }),
+        fetch(`${API_BASE}/api/vet`, { headers: { token } }),
       ]);
       if (!groomingRes.ok) throw new Error(`Grooming fetch failed: ${groomingRes.status}`);
       if (!daycareRes.ok) throw new Error(`Daycare fetch failed: ${daycareRes.status}`);
@@ -244,7 +244,7 @@ export default function MyAppointmentPage() {
     setItems((cur) => cur.filter((x) => getApptId(x) !== id));
 
     try {
-      const res = await fetch(`${API_BASE}/${pendingAppt.service}/${id}`, {
+      const res = await fetch(`${API_BASE}/api/${pendingAppt.service}/${id}`, {
         method: "DELETE",
         headers: { token },
       });
@@ -366,7 +366,7 @@ export default function MyAppointmentPage() {
 
   async function markPaidAndSync(itemsToMark) {
     try {
-      await fetch(`${API_BASE}/payments/mark-paid`, {
+      await fetch(`${API_BASE}/api/payments/mark-paid`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", token },
         body: JSON.stringify({ items: itemsToMark }),

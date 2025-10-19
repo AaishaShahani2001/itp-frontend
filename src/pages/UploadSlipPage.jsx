@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useSnackbar } from "notistack";
 import { useAppContext } from "../context/AppContext";
 
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = "https://itp-backend-waw1.onrender.com";
 
 // Allowed slip file types & size (match the text on the UI)
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "application/pdf"];
@@ -74,7 +74,7 @@ export default function UploadSlipPage() {
       form.append("order", JSON.stringify(order));
 
       // Example endpoint. Adjust to your backend.
-      const res = await fetch(`${API_BASE}/payments/upload-slip`, {
+      const res = await fetch(`${API_BASE}/api/payments/upload-slip`, {
         method: "POST",
         headers: { token }, // auth
         body: form,
@@ -90,8 +90,9 @@ export default function UploadSlipPage() {
         variant: "success",
       });
 
-      // Successful payment
-      navigate("/payment-success"); 
+      // Successful payment - pass service type to success page
+      const hasAdoption = order?.items?.some(item => item.service === "adoption");
+      navigate("/payment-success", { state: { isAdoption: hasAdoption } }); 
      
     } catch (err) {
       enqueueSnackbar(err.message || "Something went wrong", { variant: "error" });
@@ -224,10 +225,10 @@ export default function UploadSlipPage() {
         <div className="mt-5">
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !file}
             className="w-full sm:w-auto rounded-lg bg-emerald-600 text-white px-4 py-2 font-semibold disabled:opacity-50"
           >
-            {submitting ? "Uploading..." : "Please upload transfer slip"}
+            {submitting ? "Uploading..." : file ? "Continue" : "Please upload transfer slip"}
           </button>
           <button
             type="button"

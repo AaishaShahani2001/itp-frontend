@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets";
 import Title from "../components/Title";
 import { useAppContext } from "../context/AppContext";
@@ -7,9 +8,9 @@ import { QRCodeCanvas } from "qrcode.react"; // QR code generator
 
 const MyAdoptions = () => {
   const { axios, token, currency, backendUrl, userData } = useAppContext();
+  const navigate = useNavigate();
   const [adoptionDetail, setAdoptionDetail] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingId, setLoadingId] = useState(null); // Track which button is loading
   const [error, setError] = useState(null);
 
   // Edit modal state
@@ -126,30 +127,25 @@ const MyAdoptions = () => {
     }
   };
 
-  const handlePay = async (adoptionId) => {
-    setLoadingId(adoptionId); // Show loading for this button
-    try {
-      const { data } = await axios.patch(
-        `${backendUrl}/api/adoption/${adoptionId}/pay`, // Your backend endpoint
-        { isPaid: true },
-        { headers: { token } }
-      );
+  const handlePay = (adoption) => {
+    // Create order object for upload slip page
+    const order = {
+      currency: currency,
+      subtotal: adoption.price || 0,
+      items: [{
+        id: adoption._id,
+        service: "adoption",
+        title: `Adoption - ${adoption.pet?.species} ${adoption.pet?.breed}`,
+        basePrice: adoption.price || 0,
+        lineTotal: adoption.price || 0,
+        extras: []
+      }],
+      note: "Please upload a clear image/PDF of your bank transfer slip for adoption payment.",
+      adoptionId: adoption._id
+    };
 
-      if (data.success) {
-        setAdoptionDetail((prev) =>
-          prev.map((a) =>
-            a._id === adoptionId ? { ...a, isPaid: true } : a
-          )
-        );
-        toast.success("Payment successful!");
-      } else {
-        toast.error(data.message || "Payment failed.");
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || error.message);
-    } finally {
-      setLoadingId(null);
-    }
+    // Navigate to upload slip page with order data
+    navigate("/payments/upload-slip", { state: { order } });
   };
 
   useEffect(() => {
@@ -199,10 +195,10 @@ const MyAdoptions = () => {
                           ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                           : "hover:bg-blue-500 hover:text-white"
                       }`}
-                      disabled={adoption.isPaid || adoption.status === "rejected" || loadingId === adoption._id}
-                      onClick={() => handlePay(adoption._id)}
+                      disabled={adoption.isPaid || adoption.status === "rejected"}
+                      onClick={() => handlePay(adoption)}
                       >
-                      {loadingId === adoption._id ? 'Processing' : adoption.isPaid ? 'Paid' : adoption.status === "rejected" ? 'Cannot Pay' : 'Pay'}
+                      {adoption.isPaid ? 'Paid' : adoption.status === "rejected" ? 'Cannot Pay' : 'Pay'}
                     </button>
                     
                     {adoption.status === "rejected" && (

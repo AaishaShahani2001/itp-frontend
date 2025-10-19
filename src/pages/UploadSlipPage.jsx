@@ -90,8 +90,9 @@ export default function UploadSlipPage() {
         variant: "success",
       });
 
-      // Successful payment
-      navigate("/payment-success"); 
+      // Successful payment - pass service type to success page
+      const hasAdoption = order?.items?.some(item => item.service === "adoption");
+      navigate("/payment-success", { state: { isAdoption: hasAdoption } }); 
      
     } catch (err) {
       enqueueSnackbar(err.message || "Something went wrong", { variant: "error" });
@@ -224,10 +225,10 @@ export default function UploadSlipPage() {
         <div className="mt-5">
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !file}
             className="w-full sm:w-auto rounded-lg bg-emerald-600 text-white px-4 py-2 font-semibold disabled:opacity-50"
           >
-            {submitting ? "Uploading..." : "Please upload transfer slip"}
+            {submitting ? "Uploading..." : file ? "Continue" : "Please upload transfer slip"}
           </button>
           <button
             type="button"

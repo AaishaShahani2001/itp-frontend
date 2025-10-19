@@ -1,7 +1,10 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 export default function PaymentSuccess() {
+  const { state } = useLocation();
+  const isAdoption = state?.isAdoption;
+
   return (
     <div className="min-h-[70vh] bg-white flex items-center justify-center p-4">
       <div className="w-full max-w-md mx-auto rounded-2xl shadow-xl border border-gray-100 p-8 text-center">
@@ -10,15 +13,18 @@ export default function PaymentSuccess() {
         </div>
         <h1 className="mt-4 text-2xl font-semibold">Payment Successful</h1>
         <p className="mt-2 text-gray-600">
-          Thank you! Your appointments have been marked as paid.
+          {isAdoption 
+            ? "Thank you! Your adoption payment has been recorded." 
+            : "Thank you! Your appointments have been marked as paid."
+          }
         </p>
 
         <div className="mt-6 space-y-3">
           <Link
-            to="/myCareappointments"
+            to={isAdoption ? "/MyAdoptions" : "/myCareappointments"}
             className="inline-block w-full px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white"
           >
-            View My Appointments
+            {isAdoption ? "View My Adoptions" : "View My Appointments"}
           </Link>
           <Link
             to="/"

@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
+import { useAppContext } from "../context/AppContext";
 
 const AdoptionDetail = () => {
   const { id } = useParams();
@@ -9,10 +10,12 @@ const AdoptionDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const {backendUrl} = useAppContext();
+
   useEffect(() => {
     const fetchAdoption = async () => {
       try {
-        const response = await axios.get(`${process.env.VITE_FRONTEND_URL}/api/adoption/details/${id}`);
+        const response = await axios.get(`${backendUrl}/api/adoption/details/${id}`);
         setAdoption(response.data.adoption);
       } catch (err) {
         setError(err.response?.data?.message || err.message);

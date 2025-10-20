@@ -6,7 +6,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { useAppContext } from "../context/AppContext";
+
 
 /* ---------- Date helpers (pin to local noon to avoid TZ shifts) ---------- */
 function toLocalYMD(d) {
@@ -130,7 +130,7 @@ export default function EditVetForm() {
   const { id: idFromParams } = useParams();
   const [params] = useSearchParams();
   const location = useLocation();
-  const {backendUrl} = useAppContext();
+ 
 
   // Prefer param, then query (?editId), then state
   const editId =
@@ -178,7 +178,7 @@ export default function EditVetForm() {
 
     (async () => {
       try {
-        const r = await fetch(`${backendUrl}/api/vet/${editId}`);
+        const r = await fetch(`https://itp-backend-waw1.onrender.com/api/vet/${editId}`);
         const ct = r.headers.get("content-type") || "";
         const data = ct.includes("application/json") ? await r.json() : await r.text();
 
@@ -249,11 +249,8 @@ export default function EditVetForm() {
       if (selectedService) fd.append("selectedService", selectedService);
       if (selectedPrice) fd.append("selectedPrice", selectedPrice);
 
-<<<<<<< HEAD
-      const UPDATE_URL = `${backendUrl}/api/vet/${editId}`;
-=======
+
       const UPDATE_URL = `https://itp-backend-waw1.onrender.com/api/vet/${editId}`;
->>>>>>> 5f708ba (added backendUrl)
       const r = await fetch(UPDATE_URL, { method: "PUT", body: fd });
 
       const ct = r.headers.get("content-type") || "";

@@ -7,7 +7,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { useAppContext } from "../context/AppContext"
+
 
 
 /* ---- local-date helpers (avoid UTC shifts) ---- */
@@ -85,7 +85,7 @@ export default function EditDaycareForm() {
   const { id: idFromParams } = useParams();
   const [params] = useSearchParams();
   const location = useLocation();
-  const { backendUrl } = useAppContext();
+ 
 
   // Accept id from /daycare-edit/:id OR ?editId= OR location.state.appointment
   const editId =
@@ -251,11 +251,8 @@ export default function EditDaycareForm() {
         notes: values.notes?.trim() || "",
       };
 
-<<<<<<< HEAD
-      const r = await fetch(`${backendUrl}/api/daycare/${editId}`, {
-=======
+
       const r = await fetch(`https://itp-backend-waw1.onrender.com/api/daycare/${editId}`, {
->>>>>>> 5f708ba (added backendUrl)
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

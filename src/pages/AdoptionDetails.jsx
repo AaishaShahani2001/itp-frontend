@@ -10,12 +10,12 @@ const AdoptionDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const {backendUrl} = useAppContext();
+  const {backendUrl, token} = useAppContext();
 
   useEffect(() => {
     const fetchAdoption = async () => {
       try {
-        const response = await axios.get(`${backendUrl}/api/adoption/details/${id}`);
+        const response = await axios.get(`${backendUrl}/api/adoption/details/${id}`, {headers: {token}});
         setAdoption(response.data.adoption);
       } catch (err) {
         setError(err.response?.data?.message || err.message);

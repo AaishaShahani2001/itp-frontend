@@ -178,11 +178,7 @@ export default function EditVetForm() {
 
     (async () => {
       try {
-<<<<<<< HEAD
         const r = await fetch(`${backendUrl}/api/vet/${editId}`);
-=======
-        const r = await fetch(`https://itp-backend-waw1.onrender.com/api/vet/${editId}`);
->>>>>>> 5f708ba (added backendUrl)
         const ct = r.headers.get("content-type") || "";
         const data = ct.includes("application/json") ? await r.json() : await r.text();
 

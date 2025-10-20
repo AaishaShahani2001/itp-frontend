@@ -31,26 +31,58 @@ const AdoptionDetail = () => {
   if (!adoption) return <div>No adoption found</div>;
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">Adoption Details</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <img
-            src={adoption.pet?.image || '/default-image.jpg'}
-            alt={adoption.pet?.breed || 'Pet'}
-            className="w-full rounded-md"
-          />
+    <div className="max-w-6xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-6">Adoption Details</h1>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Pet overview */}
+        <div className="lg:col-span-1">
+          <div className="rounded-lg overflow-hidden border">
+            <img
+              src={adoption.pet?.image || '/default-image.jpg'}
+              alt={adoption.pet?.breed || 'Pet'}
+              className="w-full h-auto object-cover"
+            />
+          </div>
+
+          <div className="mt-4 space-y-2 text-sm">
+            <div className="flex justify-between"><span className="text-gray-600">Species</span><span>{adoption.pet?.species || '—'}</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">Breed</span><span>{adoption.pet?.breed || '—'}</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">Gender</span><span>{adoption.pet?.gender || '—'}</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">Color</span><span>{adoption.pet?.color || '—'}</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">Age (years)</span><span>{adoption.pet?.age ?? '—'}</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">Weight (kg)</span><span>{adoption.pet?.weight ?? '—'}</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">Good with kids</span><span>{adoption.pet?.goodWithKids || '—'}</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">Good with pets</span><span>{adoption.pet?.goodWithPets || '—'}</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">Price</span><span>{adoption.pet?.price != null ? `${adoption.pet.price}` : '—'}</span></div>
+          </div>
         </div>
-        <div>
-          <h2 className="text-xl font-semibold">{adoption.pet?.breed || 'Unknown Breed'}</h2>
-          <p>Species: {adoption.pet?.species || 'Unknown'}</p>
-          <p>Adopter Name: {adoption.name}</p>
-          <p>Age: {adoption.age}</p>
-          <p>Address: {adoption.address}</p>
-          <p>Phone: {adoption.phone}</p>
-          <p>Status: {adoption.status}</p>
-          <p>Adoption Date: {new Date(adoption.date).toLocaleDateString()}</p>
-          <p>Appointment Date: {adoption.visit ? new Date(adoption.visit).toLocaleDateString() : 'Not scheduled'}</p>
+
+        {/* Adoption and pet details */}
+        <div className="lg:col-span-2 space-y-8">
+          {/* Adoption info */}
+          <section className="border rounded-lg p-4">
+            <h2 className="text-lg font-semibold mb-4">Adoption Information</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div><span className="text-gray-600">Adopter name</span><div className="font-medium">{adoption.name || '—'}</div></div>
+              <div><span className="text-gray-600">Phone</span><div className="font-medium">{adoption.phone || '—'}</div></div>
+              <div><span className="text-gray-600">Age</span><div className="font-medium">{adoption.age ?? '—'}</div></div>
+              <div><span className="text-gray-600">Status</span><div className="font-medium capitalize">{adoption.status || '—'}</div></div>
+              <div><span className="text-gray-600">Adoption date</span><div className="font-medium">{adoption.date ? new Date(adoption.date).toLocaleDateString() : '—'}</div></div>
+              <div><span className="text-gray-600">Appointment date</span><div className="font-medium">{adoption.visit ? new Date(adoption.visit).toLocaleDateString() : 'Not scheduled'}</div></div>
+              <div className="md:col-span-2"><span className="text-gray-600">Address</span><div className="font-medium">{adoption.address || '—'}</div></div>
+            </div>
+          </section>
+
+          {/* Pet care details */}
+          <section className="border rounded-lg p-4">
+            <h2 className="text-lg font-semibold mb-4">Pet Information</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="md:col-span-2"><span className="text-gray-600">Diet</span><div className="font-medium">{adoption.pet?.diet || '—'}</div></div>
+              <div className="md:col-span-2"><span className="text-gray-600">Medical notes</span><div className="font-medium whitespace-pre-wrap">{adoption.pet?.medical || '—'}</div></div>
+              <div><span className="text-gray-600">Born</span><div className="font-medium">{adoption.pet?.born || '—'}</div></div>
+            </div>
+          </section>
         </div>
       </div>
     </div>

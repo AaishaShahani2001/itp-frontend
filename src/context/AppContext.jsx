@@ -27,7 +27,7 @@ export const AppProvider = ({ children }) => {
     //Function to fetch all pets from the server
     const fetchPets = async () => {
         try {
-            const {data} = await axios.get('/api/caretaker/pets')
+            const {data} = await axios.get(`${backendUrl}/api/caretaker/pets`)
 
             data.success ? setPets(data.pets) : toast.error(data.message)
             

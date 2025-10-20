@@ -33,6 +33,7 @@ import Sales from './pages/Sales.jsx';
 import UploadSlipPage from "./pages/UploadSlipPage";
 
 const App = () => {
+  const location = useLocation();
 
   return (
     <div className="min-h-screen">
@@ -98,7 +99,7 @@ const App = () => {
       <Route path="*" element={<h2 className="text-red-500 text-3xl">404 Page Not Found</h2>} />
       
     </Routes>
-    <Footer />
+    {!(location.pathname.startsWith('/adoption/details/')) && <Footer />}
       </div>
   )
 }

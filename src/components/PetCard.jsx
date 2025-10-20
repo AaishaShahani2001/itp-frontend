@@ -5,12 +5,12 @@ import { useAppContext } from '../context/AppContext'
 
 const PetCard = ({pet}) => {
   const [showModal, setShowModal] = useState(false)
-  const { currency } = useAppContext()
+  const { currency, backendUrl } = useAppContext()
   const navigate = useNavigate()
 
   return (
     <>
-      <div onClick={() => {navigate(`/adoption/${pet._id}`); scrollTo(0,0)}} className='group rounded-xl overflow-hidden shadow-lg hover:-translate-y-1 transition-all duration-500 cursor-pointer'>
+      <div onClick={() => {navigate(`${backendUrl}/adoption/${pet._id}`); scrollTo(0,0)}} className='group rounded-xl overflow-hidden shadow-lg hover:-translate-y-1 transition-all duration-500 cursor-pointer'>
 
             <div className='relative  h-48 overglow-hidden'>
               <img src={pet.image} alt="Pet Image" className='w-full h-full object-cover transition-transform duration-500 group-hover:scale-105' />
@@ -182,7 +182,7 @@ const PetCard = ({pet}) => {
                     <button
                       onClick={() => {
                         setShowModal(false);
-                        navigate(`/adoption/${pet._id}`);
+                        navigate(`${backendUrl}/adoption/${pet._id}`);
                         scrollTo(0,0);
                       }}
                       className="flex-1 bg-primary text-white py-3 px-6 rounded-lg font-medium hover:bg-primary-dark transition-colors"

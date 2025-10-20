@@ -11,8 +11,7 @@ export const AppContext = createContext();
 export const AppProvider = ({ children }) => {
 
     const navigate = useNavigate();
-    const currency = import.meta.env.VITE_CURRENCY || 'Rs.';
-    const backendUrl = "https://itp-backend-waw1.onrender.com";
+    const currency = import.meta.env.VITE_CURRENCY || 'Rs. ';
     const backendUrl = import.meta.env.VITE_BASE_URL || 'https://itp-backend-waw1.onrender.com';
 
     const [token, setToken] = useState(localStorage.getItem('token') ? localStorage.getItem('token') : false)

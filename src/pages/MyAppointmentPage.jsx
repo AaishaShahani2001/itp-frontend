@@ -6,7 +6,7 @@ import { useSnackbar } from "notistack";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useAppContext } from "../context/AppContext";
 
-const API_BASE = "https://itp-backend-waw1.onrender.com/api";
+const API_BASE = "http://localhost:3000/api";
 
 /* ------------------- labels & edit routes ------------------- */
 const SERVICE_LABEL = { vet: "Veterinary Care", grooming: "Grooming", daycare: "Daycare" };

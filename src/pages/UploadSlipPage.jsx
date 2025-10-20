@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useSnackbar } from "notistack";
 import { useAppContext } from "../context/AppContext";
 
-const API_BASE = "https://itp-backend-waw1.onrender.com/api";
+const API_BASE = "http://localhost:3000/api";
 
 // Allowed slip file types & size (match the text on the UI)
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "application/pdf"];

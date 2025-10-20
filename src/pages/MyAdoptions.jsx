@@ -189,22 +189,34 @@ const MyAdoptions = () => {
                   <p className="text-gray-500">{adoption.pet?.species || "Unnamed"}</p>
 
                   
-                    <button
-                      className={`mt-5 border border-blue-500 px-12 py-2 rounded-full transition-all ${
-                      adoption.isPaid || adoption.status === "rejected"
-                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                          : "hover:bg-blue-500 hover:text-white"
-                      }`}
-                      disabled={adoption.isPaid || adoption.status === "rejected"}
-                      onClick={() => handlePay(adoption)}
-                      >
-                      {adoption.isPaid ? 'Paid' : adoption.status === "rejected" ? 'Cannot Pay' : 'Pay'}
-                    </button>
+                    {/* Only show Pay button if adoption is approved */}
+                    {adoption.status === "approved" && (
+                      <button
+                        className={`mt-5 border border-blue-500 px-12 py-2 rounded-full transition-all ${
+                        adoption.isPaid
+                            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                            : "hover:bg-blue-500 hover:text-white"
+                        }`}
+                        disabled={adoption.isPaid}
+                        onClick={() => handlePay(adoption)}
+                        >
+                        {adoption.isPaid ? 'Paid' : 'Pay'}
+                      </button>
+                    )}
+                    
+                    {/* Show status messages for non-approved adoptions */}
+                    {adoption.status === "pending" && (
+                      <div className="mt-5 text-center">
+                        <p className="text-sm text-orange-600 font-medium">Awaiting Admin Approval</p>
+                        <p className="text-xs text-gray-500 mt-1">Payment will be available after approval</p>
+                      </div>
+                    )}
                     
                     {adoption.status === "rejected" && (
-                      <p className="text-xs text-red-500 mt-2 text-center">
-                        Payment not available for rejected adoptions
-                      </p>
+                      <div className="mt-5 text-center">
+                        <p className="text-sm text-red-600 font-medium">Application Rejected</p>
+                        <p className="text-xs text-gray-500 mt-1">Payment not available for rejected adoptions</p>
+                      </div>
                     )}
                 </div>
 
@@ -215,15 +227,18 @@ const MyAdoptions = () => {
                     <p
                       className={`px-3 py-1 text-xs rounded-full ${
                         adoption.status === "pending"
-                          ? "bg-gray-400/15 text-gray-600"
+                          ? "bg-orange-400/15 text-orange-600"
                           : adoption.status === "approved"
                           ? "bg-green-400/15 text-green-600"
                           : adoption.status === "completed"
-                          ? "bg-amber-400/15 text-amber-600"
+                          ? "bg-blue-400/15 text-blue-600"
                           : "bg-red-400/15 text-red-600"
                       }`}
                     >
-                      {adoption.status}
+                      {adoption.status === "pending" ? "Awaiting Approval" : 
+                       adoption.status === "approved" ? "Approved - Ready to Pay" :
+                       adoption.status === "completed" ? "Completed" :
+                       "Rejected"}
                     </p>
                   </div>
 

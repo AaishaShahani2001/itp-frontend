@@ -150,7 +150,11 @@ export default function EditGroomForm() {
 
     (async () => {
       try {
+<<<<<<< HEAD
         const r = await fetch(`${backendUrl}/api/grooming/${editId}`);
+=======
+        const r = await fetch(`https://itp-backend-waw1.onrender.com/api/grooming/${editId}`);
+>>>>>>> 5f708ba (added backendUrl)
         const ct = r.headers.get("content-type") || "";
         const data = ct.includes("application/json") ? await r.json() : await r.text();
 
@@ -200,7 +204,11 @@ export default function EditGroomForm() {
         notes: vals.notes?.trim() || "",
       };
 
+<<<<<<< HEAD
       const r = await fetch(`${backendUrl}/api/grooming/${editId}`, {
+=======
+      const r = await fetch(`https://itp-backend-waw1.onrender.com/api/grooming/${editId}`, {
+>>>>>>> 5f708ba (added backendUrl)
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

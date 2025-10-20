@@ -178,7 +178,11 @@ export default function EditVetForm() {
 
     (async () => {
       try {
+<<<<<<< HEAD
         const r = await fetch(`${backendUrl}/api/vet/${editId}`);
+=======
+        const r = await fetch(`https://itp-backend-waw1.onrender.com/api/vet/${editId}`);
+>>>>>>> 5f708ba (added backendUrl)
         const ct = r.headers.get("content-type") || "";
         const data = ct.includes("application/json") ? await r.json() : await r.text();
 
@@ -249,7 +253,11 @@ export default function EditVetForm() {
       if (selectedService) fd.append("selectedService", selectedService);
       if (selectedPrice) fd.append("selectedPrice", selectedPrice);
 
+<<<<<<< HEAD
       const UPDATE_URL = `${backendUrl}/api/vet/${editId}`;
+=======
+      const UPDATE_URL = `https://itp-backend-waw1.onrender.com/api/vet/${editId}`;
+>>>>>>> 5f708ba (added backendUrl)
       const r = await fetch(UPDATE_URL, { method: "PUT", body: fd });
 
       const ct = r.headers.get("content-type") || "";

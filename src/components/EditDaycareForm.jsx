@@ -191,7 +191,11 @@ export default function EditDaycareForm() {
 
     (async () => {
       try {
+<<<<<<< HEAD
         const r = await fetch(`${backendUrl}/api/daycare/${editId}`);
+=======
+        const r = await fetch(`https://itp-backend-waw1.onrender.com/api/daycare/${editId}`);
+>>>>>>> 5f708ba (added backendUrl)
         const ct = r.headers.get("content-type") || "";
         const data = ct.includes("application/json") ? await r.json() : await r.text();
 
@@ -251,7 +255,11 @@ export default function EditDaycareForm() {
         notes: values.notes?.trim() || "",
       };
 
+<<<<<<< HEAD
       const r = await fetch(`${backendUrl}/api/daycare/${editId}`, {
+=======
+      const r = await fetch(`https://itp-backend-waw1.onrender.com/api/daycare/${editId}`, {
+>>>>>>> 5f708ba (added backendUrl)
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

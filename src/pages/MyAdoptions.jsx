@@ -269,7 +269,7 @@ const MyAdoptions = () => {
                   <div className="flex flex-col items-end mr-4">
                     <p className="text-xs mb-1">Scan QR for details</p>
                     <QRCodeCanvas
-                      value={`${backendUrl}/adoption/details/${adoption._id}`}
+                      value={`https://itp-frontend.onrender.com/adoption/details/${adoption._id}`}
                       size={100}
                       bgColor="#ffffff"
                       fgColor="#000000"

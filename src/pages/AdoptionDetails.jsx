@@ -48,13 +48,8 @@ const AdoptionDetail = () => {
           <div className="mt-4 space-y-2 text-sm">
             <div className="flex justify-between"><span className="text-gray-600">Species</span><span>{adoption.pet?.species || '—'}</span></div>
             <div className="flex justify-between"><span className="text-gray-600">Breed</span><span>{adoption.pet?.breed || '—'}</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">Gender</span><span>{adoption.pet?.gender || '—'}</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">Color</span><span>{adoption.pet?.color || '—'}</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">Age (years)</span><span>{adoption.pet?.age ?? '—'}</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">Weight (kg)</span><span>{adoption.pet?.weight ?? '—'}</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">Good with kids</span><span>{adoption.pet?.goodWithKids || '—'}</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">Good with pets</span><span>{adoption.pet?.goodWithPets || '—'}</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">Price</span><span>{adoption.pet?.price != null ? `${adoption.pet.price}` : '—'}</span></div>
+            
+            <div className="flex justify-between"><span className="text-gray-600">Price</span><span>{adoption.pet?.price != null ? `Rs. ${adoption.pet.price}` : '—'}</span></div>
           </div>
         </div>
 
@@ -66,7 +61,7 @@ const AdoptionDetail = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div><span className="text-gray-600">Adopter name</span><div className="font-medium">{adoption.name || '—'}</div></div>
               <div><span className="text-gray-600">Phone</span><div className="font-medium">{adoption.phone || '—'}</div></div>
-              <div><span className="text-gray-600">Age</span><div className="font-medium">{adoption.age ?? '—'}</div></div>
+              <div><span className="text-gray-600">Adopter's age</span><div className="font-medium">{adoption.age ?? '—'}</div></div>
               <div><span className="text-gray-600">Status</span><div className="font-medium capitalize">{adoption.status || '—'}</div></div>
               <div><span className="text-gray-600">Adoption date</span><div className="font-medium">{adoption.date ? new Date(adoption.date).toLocaleDateString() : '—'}</div></div>
               <div><span className="text-gray-600">Appointment date</span><div className="font-medium">{adoption.visit ? new Date(adoption.visit).toLocaleDateString() : 'Not scheduled'}</div></div>
@@ -78,6 +73,12 @@ const AdoptionDetail = () => {
           <section className="border rounded-lg p-4">
             <h2 className="text-lg font-semibold mb-4">Pet Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="flex justify-between"><span className="text-gray-600">Gender</span><span>{adoption.pet?.gender || '—'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">Color</span><span>{adoption.pet?.color || '—'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">Age (years)</span><span>{adoption.pet?.age ?? '—'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">Weight (kg)</span><span>{adoption.pet?.weight ?? '—'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">Good with kids</span><span>{adoption.pet?.goodWithKids || '—'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">Good with pets</span><span>{adoption.pet?.goodWithPets || '—'}</span></div>
               <div className="md:col-span-2"><span className="text-gray-600">Diet</span><div className="font-medium">{adoption.pet?.diet || '—'}</div></div>
               <div className="md:col-span-2"><span className="text-gray-600">Medical notes</span><div className="font-medium whitespace-pre-wrap">{adoption.pet?.medical || '—'}</div></div>
               <div><span className="text-gray-600">Born</span><div className="font-medium">{adoption.pet?.born || '—'}</div></div>

@@ -176,26 +176,6 @@ const PetCard = ({pet}) => {
                       <p className="text-lg font-semibold text-blue-700">{pet.goodWithPets}</p>
                     </div>
                   </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-4 pt-4">
-                    <button
-                      onClick={() => {
-                        setShowModal(false);
-                        navigate(`/adoption/${pet._id}`);
-                        scrollTo(0,0);
-                      }}
-                      className="flex-1 bg-primary text-white py-3 px-6 rounded-lg font-medium hover:bg-primary-dark transition-colors"
-                    >
-                      Adopt This Pet
-                    </button>
-                    <button
-                      onClick={() => setShowModal(false)}
-                      className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                    >
-                      Close
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>

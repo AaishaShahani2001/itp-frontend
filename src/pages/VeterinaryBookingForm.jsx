@@ -1,5 +1,5 @@
-// src/pages/VeterinaryBookingForm.jsx
-import React, { useMemo, useState } from "react";
+// src/pages/VetAppointmentBookingForm.jsx
+import React, { useMemo, useState, useEffect } from "react";
 import { useSnackbar } from "notistack";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import DatePicker from "react-datepicker";
@@ -49,14 +49,10 @@ const buildSlots = () => {
 const TIME_SLOTS = buildSlots();
 
 /* ---------- Validation ---------- */
-// Owner name: letters + spaces only
 const NAME_REGEX = /^[A-Za-z\s]+$/;
-// Email must be valid AND start with a letter
 const EMAIL_STARTS_WITH_LETTER = /^[A-Za-z][A-Za-z0-9._%+-]*@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-// Accept 9 digits after +94: (11|70|71|72|75|76|77|78) + 7 digits
 const LK_AFTER_CC_REGEX = /^(11|70|71|72|75|76|77|78)\d{7}$/;
 
-// Block common disposable email domains
 const DISPOSABLE_DOMAINS = new Set([
   "mailinator.com",
   "yopmail.com",
@@ -89,7 +85,6 @@ const schema = yup.object({
       const domain = val.split("@")[1];
       return domain && !DISPOSABLE_DOMAINS.has(domain.toLowerCase());
     }),
-  // ✅ Validate 9 digits AFTER +94
   ownerPhone: yup
     .string()
     .required("Contact number is required.")
@@ -129,12 +124,11 @@ const schema = yup.object({
   notes: yup.string().max(500, "Keep notes under 500 characters."),
 });
 
-export default function VeterinaryBookingForm() {
+export default function VetAppointmentBookingForm() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { enqueueSnackbar } = useSnackbar();
-
-  const {token, backendUrl} = useAppContext();
+  const { token, backendUrl } = useAppContext();
 
   // From VetCareDetails (optional). If present, we lock the “reason”.
   const selectedService = params.get("service") || "";
@@ -145,12 +139,14 @@ export default function VeterinaryBookingForm() {
     register,
     handleSubmit,
     control,
+    setError,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
       ownerName: "",
-      ownerPhone: "",      // store only the 9 digits after +94
+      ownerPhone: "",
       ownerEmail: "",
       petType: "",
       petSize: "",
@@ -162,38 +158,72 @@ export default function VeterinaryBookingForm() {
     },
   });
 
+  const [bookedSlots, setBookedSlots] = useState([]); // minute values for the chosen day
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const chosenDate = watch("date");
+
+  // Fetch booked slots whenever date changes
+  useEffect(() => {
+    const run = async () => {
+      setBookedSlots([]);
+      if (!chosenDate) return;
+      setLoadingSlots(true);
+      try {
+        const ymd = toLocalYMD(normalizeToLocalNoon(chosenDate));
+        const resp = await axios.get(`${backendUrl}/api/vet/appointments`, {
+          params: { date: ymd },
+        });
+        const minutes = (resp.data || [])
+          .map((a) => Number(a?.startMinutes))
+          .filter(Number.isFinite);
+        setBookedSlots(Array.from(new Set(minutes)));
+      } catch {
+        // silently ignore – user can still pick from the full list
+      } finally {
+        setLoadingSlots(false);
+      }
+    };
+    run();
+  }, [chosenDate, backendUrl]);
+
+  const isSlotBooked = (m) => bookedSlots.includes(Number(m));
+
   const onSubmit = async (values) => {
-  try {
-    const fd = new FormData();
-    fd.append("ownerName", values.ownerName.trim());
-    fd.append("ownerPhone", `+94${values.ownerPhone}`);
-    fd.append("ownerEmail", values.ownerEmail.trim());
-    fd.append("petType", values.petType);
-    fd.append("petSize", values.petSize);
-    fd.append("reason", (lockedReason || values.reason || "").trim());
-    fd.append("dateISO", toLocalYMD(normalizeToLocalNoon(values.date)));
-    fd.append("timeSlotMinutes", String(values.timeSlot));
-    if (values.medicalFile?.length > 0) fd.append("medicalFile", values.medicalFile[0]);
-    fd.append("notes", values.notes || "");
-    if (selectedService) fd.append("selectedService", selectedService);
-    if (selectedPrice) fd.append("selectedPrice", selectedPrice);
+    try {
+      const fd = new FormData();
+      fd.append("ownerName", values.ownerName.trim());
+      fd.append("ownerPhone", `+94${values.ownerPhone}`);
+      fd.append("ownerEmail", values.ownerEmail.trim());
+      fd.append("petType", values.petType);
+      fd.append("petSize", values.petSize);
+      fd.append("reason", (lockedReason || values.reason || "").trim());
+      fd.append("dateISO", toLocalYMD(normalizeToLocalNoon(values.date)));
+      fd.append("timeSlotMinutes", String(values.timeSlot));
+      if (values.medicalFile?.length > 0) fd.append("medicalFile", values.medicalFile[0]);
+      fd.append("notes", values.notes || "");
+      if (selectedService) fd.append("selectedService", selectedService);
+      if (selectedPrice) fd.append("selectedPrice", selectedPrice);
 
-    const res = await axios.post(`${backendUrl}/api/vet/appointments`, fd, {
-      headers: {token} },
-    );
+      const res = await axios.post(`${backendUrl}/api/vet/appointments`, fd, {
+        headers: { token },
+      });
 
-    if (res.data?.ok) {
-      enqueueSnackbar("✅ Vet appointment created!", { variant: "success" });
-      navigate("/book/vetappointment");
-    } else {
-      enqueueSnackbar(res.data?.message || "Request failed", { variant: "error" });
+      if (res.data?.ok) {
+        enqueueSnackbar("✅ Vet appointment created!", { variant: "success" });
+        navigate("/book/vetappointment");
+      } else {
+        enqueueSnackbar(res.data?.message || "Request failed", { variant: "error" });
+      }
+    } catch (error) {
+      const msg = error?.response?.data?.message || error.message || "Something went wrong!";
+      if (error?.response?.status === 409) {
+        enqueueSnackbar(msg, { variant: "warning" });
+        setError("timeSlot", { type: "manual", message: msg });
+      } else {
+        enqueueSnackbar(msg, { variant: "error" });
+      }
     }
-  } catch (error) {
-    console.error("Error submitting form:", error.response?.data || error.message);
-    enqueueSnackbar(error.response?.data?.message || error.message || "Something went wrong!", { variant: "error" });
-  }
-};
-
+  };
 
   // -------- Live input guards --------
   const onOwnerNameInput = (e) => {
@@ -241,14 +271,18 @@ export default function VeterinaryBookingForm() {
                     onInput={onOwnerNameInput}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  {errors.ownerName && <p className="mt-1 text-sm text-red-600">{errors.ownerName.message}</p>}
+                  {errors.ownerName && (
+                    <p className="mt-1 text-sm text-red-600">{errors.ownerName.message}</p>
+                  )}
                 </div>
 
-                {/* ✅ Phone with +94 prefix and 9-digit input */}
+                {/* Phone with +94 prefix and 9-digit input */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
                   <div className="flex">
-                    <span className="inline-flex items-center px-3 rounded-l-lg border border-slate-300 bg-slate-100 text-slate-700 select-none">+94</span>
+                    <span className="inline-flex items-center px-3 rounded-l-lg border border-slate-300 bg-slate-100 text-slate-700 select-none">
+                      +94
+                    </span>
                     <input
                       type="tel"
                       inputMode="numeric"
@@ -264,9 +298,12 @@ export default function VeterinaryBookingForm() {
                     />
                   </div>
                   <p className="mt-1 text-[12px] text-slate-500">
-                    Type the <b>9 digits after +94</b> (e.g., <code>711234567</code> or <code>112345678</code>).
+                    Type the <b>9 digits after +94</b> (e.g., <code>711234567</code> or{" "}
+                    <code>112345678</code>).
                   </p>
-                  {errors.ownerPhone && <p className="mt-1 text-sm text-red-600">{errors.ownerPhone.message}</p>}
+                  {errors.ownerPhone && (
+                    <p className="mt-1 text-sm text-red-600">{errors.ownerPhone.message}</p>
+                  )}
                 </div>
 
                 {/* Owner Email */}
@@ -280,7 +317,9 @@ export default function VeterinaryBookingForm() {
                     {...register("ownerEmail")}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  {errors.ownerEmail && <p className="mt-1 text-sm text-red-600">{errors.ownerEmail.message}</p>}
+                  {errors.ownerEmail && (
+                    <p className="mt-1 text-sm text-red-600">{errors.ownerEmail.message}</p>
+                  )}
                 </div>
               </div>
 
@@ -299,11 +338,15 @@ export default function VeterinaryBookingForm() {
                       </option>
                     ))}
                   </select>
-                  {errors.petType && <p className="mt-1 text-sm text-red-600">{errors.petType.message}</p>}
+                  {errors.petType && (
+                    <p className="mt-1 text-sm text-red-600">{errors.petType.message}</p>
+                  )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Size (with scale)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Size (with scale)
+                  </label>
                   <select
                     {...register("petSize")}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -315,13 +358,17 @@ export default function VeterinaryBookingForm() {
                       </option>
                     ))}
                   </select>
-                  {errors.petSize && <p className="mt-1 text-sm text-red-600">{errors.petSize.message}</p>}
+                  {errors.petSize && (
+                    <p className="mt-1 text-sm text-red-600">{errors.petSize.message}</p>
+                  )}
                 </div>
               </div>
 
               {/* Reason (locked if ?service=... present) */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Reason for Consulting</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Reason for Consulting
+                </label>
                 {lockedReason ? (
                   <>
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
@@ -337,7 +384,9 @@ export default function VeterinaryBookingForm() {
                       {...register("reason")}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    {errors.reason && <p className="mt-1 text-sm text-red-600">{errors.reason.message}</p>}
+                    {errors.reason && (
+                      <p className="mt-1 text-sm text-red-600">{errors.reason.message}</p>
+                    )}
                   </>
                 )}
               </div>
@@ -345,7 +394,9 @@ export default function VeterinaryBookingForm() {
               {/* Date & Time */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Preferred Date</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Preferred Date
+                  </label>
                   <Controller
                     control={control}
                     name="date"
@@ -361,48 +412,70 @@ export default function VeterinaryBookingForm() {
                       />
                     )}
                   />
-                  {errors.date && <p className="mt-1 text-sm text-red-600">{errors.date.message}</p>}
+                  {errors.date && (
+                    <p className="mt-1 text-sm text-red-600">{errors.date.message}</p>
+                  )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Preferred Time Slot</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Preferred Time Slot
+                  </label>
                   <select
                     {...register("timeSlot")}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
+                    disabled={loadingSlots}
                   >
-                    <option value="">Select time</option>
-                    {TIME_SLOTS.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
+                    <option value="">{loadingSlots ? "Loading slots…" : "Select time"}</option>
+                    {TIME_SLOTS.map((t) => {
+                      const taken = isSlotBooked(t.value);
+                      return (
+                        <option key={t.value} value={t.value} disabled={taken}>
+                          {t.label}
+                          {taken ? " (booked)" : ""}
+                        </option>
+                      );
+                    })}
                   </select>
-                  {errors.timeSlot && <p className="mt-1 text-sm text-red-600">{errors.timeSlot.message}</p>}
+                  {errors.timeSlot && (
+                    <p className="mt-1 text-sm text-red-600">{errors.timeSlot.message}</p>
+                  )}
+                  {bookedSlots.length > 0 && (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Times marked “(booked)” are unavailable for the selected date.
+                    </p>
+                  )}
                 </div>
               </div>
 
               {/* Medical file */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Medical File (optional)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Medical File (optional)
+                </label>
                 <input
                   type="file"
                   accept=".pdf,.jpg,.jpeg,.png"
                   {...register("medicalFile")}
                   className="block w-full text-sm text-slate-700 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-white hover:file:bg-blue-700"
                 />
-                <p className="mt-1 text-xs text-slate-500">Accepted: JPEG, JPG, PNG. Max 5 MB.</p>
+                <p className="mt-1 text-xs text-slate-500">Accepted: PDF, JPEG, JPG, PNG. Max 5 MB.</p>
               </div>
 
               {/* Notes */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Any notes for the doctor?</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Any notes for the doctor?
+                </label>
                 <textarea
                   rows={3}
                   placeholder="Allergies, medications, previous conditions, etc."
                   {...register("notes")}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
                 />
-                {errors.notes && <p className="mt-1 text-sm text-red-600">{errors.notes.message}</p>}
+                {errors.notes && (
+                  <p className="mt-1 text-sm text-red-600">{errors.notes.message}</p>
+                )}
               </div>
 
               {/* Actions */}

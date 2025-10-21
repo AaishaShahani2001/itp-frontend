@@ -29,7 +29,10 @@ const Sales = () => {
     try {
       setLoading(true);
       setError(null);
-      const apiUrl = `${backendUrl}/api/inventory`;
+      console.log('Backend URL:', backendUrl);
+      // Use proxy path for API calls (Vite proxy handles the backend URL)
+      const apiUrl = '/api/inventory';
+      console.log('Using API URL:', apiUrl);
       const response = await axios.get(apiUrl);
       if (response.data && Array.isArray(response.data)) {
         setProducts(response.data);

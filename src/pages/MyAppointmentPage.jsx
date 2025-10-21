@@ -393,6 +393,13 @@ export default function MyAppointmentPage() {
   }
 
   /* ------------------- VIEW  ------------------- */
+
+  // Dynamic delete message based on paid status
+  const deleteMessage =
+    pendingAppt && isPaid(pendingAppt)
+      ? "This action cannot be undone. You have already paid for this appointment, and your payment is non-refundable. Are you sure you want to continue?"
+      : "This action cannot be undone. Are you sure you want to delete this appointment?";
+
   return (
     <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       {/* Header */}
@@ -516,7 +523,7 @@ export default function MyAppointmentPage() {
       <ConfirmDialog
         open={confirmOpen}
         title="Delete appointment?"
-        message="This action cannot be undone. Are you sure you want to delete this appointment?"
+        message={deleteMessage}  
         confirmLabel="Delete"
         cancelLabel="Keep"
         loading={Boolean(deletingId)}
@@ -527,7 +534,7 @@ export default function MyAppointmentPage() {
   );
 }
 
-/* ------------------- UI bits (polished) ------------------- */
+/* ------------------- UI bits ------------------- */
 function Dot() {
   return <span className="mx-1 h-1 w-1 rounded-full bg-slate-300 inline-block align-middle" />;
 }

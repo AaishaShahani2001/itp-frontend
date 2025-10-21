@@ -235,8 +235,8 @@ const MyAdoptions = () => {
                           : "bg-red-400/15 text-red-600"
                       }`}
                     >
-                      {adoption.status === "pending" ? "Awaiting Approval" : 
-                       adoption.status === "approved" ? "Approved - Ready to Pay" :
+                      {adoption.status === "pending" ? "Pending" : 
+                       adoption.status === "approved" ? "Approved" :
                        adoption.status === "completed" ? "Completed" :
                        "Rejected"}
                     </p>

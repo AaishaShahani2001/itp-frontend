@@ -11,21 +11,18 @@ import vetImg from "../assets/vet.jpg";
 import { useAppContext } from "../context/AppContext";
 import axios from "axios";
 
-// ---- helpers: local date -> "YYYY-MM-DD" (no UTC) ----
 function toLocalYMD(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
-// normalize to local noon before formatting
 function normalizeToLocalNoon(d) {
   const copy = new Date(d);
   copy.setHours(12, 0, 0, 0);
   return copy;
 }
 
-// Pet types & sizes
 const PET_TYPES = ["Dog", "Cat", "Rabbit", "Bird", "Other"];
 const PET_SIZES = [
   { value: "small", label: "Small (0–10 kg)" },
@@ -33,7 +30,6 @@ const PET_SIZES = [
   { value: "large", label: "Large (25+ kg)" },
 ];
 
-// Half-hour time slots 08:00–20:00
 const buildSlots = () => {
   const slots = [];
   for (let m = 8 * 60; m <= 20 * 60; m += 30) {
@@ -48,22 +44,10 @@ const buildSlots = () => {
 };
 const TIME_SLOTS = buildSlots();
 
-/* ---------- Validation ---------- */
+/* ---------- Validation (images only) ---------- */
 const NAME_REGEX = /^[A-Za-z\s]+$/;
 const EMAIL_STARTS_WITH_LETTER = /^[A-Za-z][A-Za-z0-9._%+-]*@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 const LK_AFTER_CC_REGEX = /^(11|70|71|72|75|76|77|78)\d{7}$/;
-
-const DISPOSABLE_DOMAINS = new Set([
-  "mailinator.com",
-  "yopmail.com",
-  "guerrillamail.com",
-  "10minutemail.com",
-  "temp-mail.org",
-  "tempmail.dev",
-  "discard.email",
-  "getnada.com",
-  "trashmail.com",
-]);
 
 const schema = yup.object({
   ownerName: yup
@@ -79,12 +63,7 @@ const schema = yup.object({
     .required("Owner email is required.")
     .matches(EMAIL_STARTS_WITH_LETTER, "Email must start with a letter (e.g., aaisha@example.com).")
     .email("Enter a valid email (e.g., aaisha@example.com)")
-    .max(254, "Email is too long.")
-    .test("not-disposable", "Please use a real (non-disposable) email.", (val) => {
-      if (!val || !val.includes("@")) return true;
-      const domain = val.split("@")[1];
-      return domain && !DISPOSABLE_DOMAINS.has(domain.toLowerCase());
-    }),
+    .max(254, "Email is too long."),
   ownerPhone: yup
     .string()
     .required("Contact number is required.")
@@ -110,16 +89,17 @@ const schema = yup.object({
     .required("Time slot is required.")
     .min(8 * 60)
     .max(20 * 60),
+  // ✅ Images only + friendly message
   medicalFile: yup
     .mixed()
     .test("fileSize", "File too large (max 5 MB).", (value) => {
       if (!value || value.length === 0) return true;
       return value[0].size <= 5 * 1024 * 1024;
     })
-    .test("fileType", "Only PDF, JPG or PNG allowed.", (value) => {
+    .test("fileType", "Please upload PNG, JPG or JPEG medical file.", (value) => {
       if (!value || value.length === 0) return true;
-      const okTypes = ["application/pdf", "image/jpeg", "image/png"];
-      return okTypes.includes(value[0].type);
+      const type = value[0].type;
+      return type === "image/jpeg" || type === "image/png";
     }),
   notes: yup.string().max(500, "Keep notes under 500 characters."),
 });
@@ -130,7 +110,6 @@ export default function VetAppointmentBookingForm() {
   const { enqueueSnackbar } = useSnackbar();
   const { token, backendUrl } = useAppContext();
 
-  // From VetCareDetails (optional). If present, we lock the “reason”.
   const selectedService = params.get("service") || "";
   const selectedPrice = params.get("price") || "";
   const lockedReason = selectedService ? `Consultation for ${selectedService}` : "";
@@ -158,11 +137,10 @@ export default function VetAppointmentBookingForm() {
     },
   });
 
-  const [bookedSlots, setBookedSlots] = useState([]); // minute values for the chosen day
+  const [bookedSlots, setBookedSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const chosenDate = watch("date");
 
-  // Fetch booked slots whenever date changes
   useEffect(() => {
     const run = async () => {
       setBookedSlots([]);
@@ -178,7 +156,6 @@ export default function VetAppointmentBookingForm() {
           .filter(Number.isFinite);
         setBookedSlots(Array.from(new Set(minutes)));
       } catch {
-        // silently ignore – user can still pick from the full list
       } finally {
         setLoadingSlots(false);
       }
@@ -225,7 +202,6 @@ export default function VetAppointmentBookingForm() {
     }
   };
 
-  // -------- Live input guards --------
   const onOwnerNameInput = (e) => {
     const v = e.currentTarget.value.replace(/[^A-Za-z\s]/g, "");
     if (v !== e.currentTarget.value) e.currentTarget.value = v;
@@ -276,7 +252,7 @@ export default function VetAppointmentBookingForm() {
                   )}
                 </div>
 
-                {/* Phone with +94 prefix and 9-digit input */}
+                {/* Phone */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
                   <div className="flex">
@@ -364,7 +340,7 @@ export default function VetAppointmentBookingForm() {
                 </div>
               </div>
 
-              {/* Reason (locked if ?service=... present) */}
+              {/* Reason */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Reason for Consulting
@@ -448,18 +424,23 @@ export default function VetAppointmentBookingForm() {
                 </div>
               </div>
 
-              {/* Medical file */}
+              {/* Medical file — ✅ images only */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Medical File (optional)
                 </label>
                 <input
                   type="file"
-                  accept=".pdf,.jpg,.jpeg,.png"
+                  accept=".jpg,.jpeg,.png"   // <-- removed .pdf
                   {...register("medicalFile")}
                   className="block w-full text-sm text-slate-700 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-white hover:file:bg-blue-700"
                 />
-                <p className="mt-1 text-xs text-slate-500">Accepted: PDF, JPEG, JPG, PNG. Max 5 MB.</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Accepted: PNG, JPG, JPEG only. Max 5&nbsp;MB.
+                </p>
+                {errors.medicalFile && (
+                  <p className="mt-1 text-sm text-red-600">{errors.medicalFile.message}</p>
+                )}
               </div>
 
               {/* Notes */}

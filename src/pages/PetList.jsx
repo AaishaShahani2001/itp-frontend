@@ -90,7 +90,7 @@ const PetList = () => {
         </div>
       </div>
       
-        <p className="text-lg text-gray-700 font-medium text-center mb-15">
+        <p className="text-lg text-gray-700 font-medium text-center mt-15 mb-15">
           🐾 Select your favourite pet for adoption 🐶🐱
         </p>
 

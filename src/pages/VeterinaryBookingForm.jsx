@@ -390,7 +390,7 @@ export default function VeterinaryBookingForm() {
                   {...register("medicalFile")}
                   className="block w-full text-sm text-slate-700 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-white hover:file:bg-blue-700"
                 />
-                <p className="mt-1 text-xs text-slate-500">Accepted: PDF, JPG, PNG. Max 5 MB.</p>
+                <p className="mt-1 text-xs text-slate-500">Accepted: JPEG, JPG, PNG. Max 5 MB.</p>
               </div>
 
               {/* Notes */}

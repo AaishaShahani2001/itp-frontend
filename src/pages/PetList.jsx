@@ -92,6 +92,9 @@ const PetList = () => {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center justify-center gap-5 mt-10">
+        <p className="text-lg text-gray-700 font-medium text-center">
+          🐾 Select your favourite pet for adoption 🐶🐱
+        </p>
         <select
           value={petType}
           onChange={(e) => setPetType(e.target.value)}

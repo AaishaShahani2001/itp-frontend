@@ -26,15 +26,21 @@ export const AppProvider = ({ children }) => {
 
     //Function to fetch all pets from the server
     const fetchPets = async () => {
-        try {
-            const {data} = await axios.get(`${backendUrl}/api/caretaker/pets`)
-
-            data.success ? setPets(data.pets) : toast.error(data.message)
-            
-        } catch (error) {
-            toast.error(error.message)
-        }
+      try {
+        const { data } = await axios.get(`${backendUrl}/api/caretaker/pets`);
+    
+        if (data.success) {
+          const availablePets = data.pets.filter(pet => pet.isAdopted === false);
+          setPets(availablePets);
+        } else {
+          toast.error(data.message);
     }
+
+  } catch (error) {
+    toast.error(error.message);
+  }
+};
+
 
     //Function to log out the user
     const logout = () => {
